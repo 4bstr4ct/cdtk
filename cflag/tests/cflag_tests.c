@@ -1,44 +1,40 @@
 #include "../include/cflag.h"
 
+#include <string.h>
 #include <stdio.h>
 
 int main(int argc, char** argv)
 {
 	bool* boolFlag = _boolFlag(
-		"--",
-		"tests",
+		"--boolFlag",
 		true,
 		"Enable tests"
 	);
 
-	int64* int64Flag = _intFlag(
-		"--",
-		"special-value",
+	int64* int64Flag = _int64Flag(
+		"--int64Flag",
 		0,
 		"Special value for some kind of thing"
 	);
 
 	double* doubleFlag = _doubleFlag(
-		"-",
-		"doubly",
+		"--doubleFlag",
 		1,
 		"Doubly thing"
 	);
 
-	const char* const * textFlag = _stringFlag(
-		"+",
-		"text",
-		"",
+	const char* textFlag = _stringFlag(
+		"--textFlag",
+		"none",
 		"Some text for somtehing"
 	);
 
 	--argc; ++argv;
-	_parseFlags(argc, argv);
+	_parseFlags(argc, argv, PARSE_STRICT);
 
-	fprintf(stdout, "bool flag = %d\n", *boolFlag);
-	fprintf(stdout, "int64 flag = %d\n", *int64Flag);
-	fprintf(stdout, "double flag = %lf\n", *doubleFlag);
-	fprintf(stdout, "text flag = %s\n", textFlag);
-
+	fprintf(stdout, "-------------------------\nboolFlag = %d\n", *boolFlag);
+	fprintf(stdout, "int64Flag = %lld\n", *int64Flag);
+	fprintf(stdout, "doubleFlag = %f\n", *doubleFlag);
+	fprintf(stdout, "textFlag = %s\n", textFlag);
 	return 0;
 }

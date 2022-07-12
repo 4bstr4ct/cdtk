@@ -55,7 +55,7 @@ def _build_and_run_test(test):
 			output_file_path,
 			sources,
 			dependencies))
-		os.system('cmd /C \"{}\"'.format(output_file_path))
+		os.system('cmd /C \"{} {}\"'.format(output_file_path, run_args))
 	else:
 		os.system('{} {} -o {} {} {}'.format(
 			compiler,
@@ -63,7 +63,7 @@ def _build_and_run_test(test):
 			output_file_path,
 			sources,
 			dependencies))
-		os.system('{}'.format(output_file_path))
+		os.system('{} {}'.format(output_file_path, run_args))
 
 
 def _main():

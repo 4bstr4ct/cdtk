@@ -20,14 +20,13 @@ enum _FlagType
 union _FlagValue
 {
 	bool b;
-	int64 i;
+	int64 i64;
 	double d;
 	char s[STRING_FLAG_CAPACITY + 1];
 };
 
 struct _Flag
 {
-	const char* prefix;
 	const char* name;
 	enum _FlagType type;
 	union _FlagValue value;
@@ -75,8 +74,7 @@ static const char* _formatHelp()
 		unsigned int written = snprintf(
 			_helpBuffer.buffer + _helpBuffer.length,
 			HELP_BUFFER_CAPACITY,
-			"    %s%s\n        [ %s ] - %s.\n",
-			flag->prefix,
+			"    %s\n        [ %s ] - %s.\n",
 			flag->name,
 			_stringifiedFlagTypes[flag->type],
 			flag->description);
@@ -86,49 +84,48 @@ static const char* _formatHelp()
 	_helpBuffer.buffer[_helpBuffer.length] = '\0';
 }
 
-static struct _Flag* const _metaFlag(const char* prefix, const char* name, const char* description)
+static struct _Flag* const _metaFlag(const char* name, const char* description)
 {
 	assert(_flagsCache.count < FLAGS_CACHE_CAPACITY);
-	struct _Flag* flag = &_flagsCache.flags[_flagsCache.count++];
-	flag->prefix = prefix;
+	struct _Flag* const flag = &_flagsCache.flags[_flagsCache.count++];
 	flag->name = name;
 	flag->description = description;
 	return flag;
 }
 
-bool* _boolFlag(const char* prefix, const char* name, const bool defaultValue, const char* description)
+bool* _boolFlag(const char* name, const bool defaultValue, const char* description)
 {
-	struct _Flag* const flag = _metaFlag(prefix, name, description);
+	struct _Flag* const flag = _metaFlag(name, description);
 	flag->type = FLAG_BOOL;
 	flag->value.b = defaultValue;
 	return &flag->value.b;
 }
 
-int64* _intFlag(const char* prefix, const char* name, const int64 defaultValue, const char* description)
+int64* _int64Flag(const char* name, const int64 defaultValue, const char* description)
 {
-	struct _Flag* const flag = _metaFlag(prefix, name, description);
+	struct _Flag* const flag = _metaFlag(name, description);
 	flag->type = FLAG_INT64;
-	flag->value.i = defaultValue;
-	return &flag->value.i;
+	flag->value.i64 = defaultValue;
+	return &flag->value.i64;
 }
 
-double* _doubleFlag(const char* prefix, const char* name, const double defaultValue, const char* description)
+double* _doubleFlag(const char* name, const double defaultValue, const char* description)
 {
-	struct _Flag* const flag = _metaFlag(prefix, name, description);
+	struct _Flag* const flag = _metaFlag(name, description);
 	flag->type = FLAG_DOUBLE;
 	flag->value.d = defaultValue;
 	return &flag->value.d;
 }
 
-const char** _stringFlag(const char* prefix, const char* name, const char* const defaultValue, const char* description)
+const char* _stringFlag(const char* name, const char* const defaultValue, const char* description)
 {
-	struct _Flag* const flag = _metaFlag(prefix, name, description);
+	struct _Flag* const flag = _metaFlag(name, description);
 	flag->type = FLAG_STRING;
 	unsigned int length = strlen(defaultValue);
 	length = length >= STRING_FLAG_CAPACITY ? STRING_FLAG_CAPACITY : length;
 	memcpy(flag->value.s, defaultValue, length);
 	flag->value.s[length] = '\0';
-	return (const char**)&flag->value.s;
+	return (const char*)(flag->value.s);
 }
 
 static const char* _shift(int* argc, char*** argv)
@@ -184,7 +181,7 @@ static int _handleFlag(struct _Flag* const flag, const char* argValue)
 
 			if (sscanf(argValue, "%lld", &value) == 1)
 			{
-				flag->value.i = value;
+				flag->value.i64 = value;
 				return 1;
 			}
 			else
@@ -212,13 +209,11 @@ static int _handleFlag(struct _Flag* const flag, const char* argValue)
 
 		case FLAG_STRING:
 		{
-			char value[STRING_FLAG_CAPACITY + 1];
-
-			if (sscanf(argValue, "%s", value) == 1)
+			if (argValue != ((void*)0))
 			{
-				unsigned int length = strlen(value);
+				unsigned int length = strlen(argValue);
 				length = length >= STRING_FLAG_CAPACITY ? STRING_FLAG_CAPACITY : length;
-				memcpy(flag->value.s, value, length);
+				memcpy(flag->value.s, argValue, length);
 				flag->value.s[length] = '\0';
 				return 1;
 			}
@@ -239,7 +234,7 @@ static int _handleFlag(struct _Flag* const flag, const char* argValue)
 	return 0;
 }
 
-void _parseFlags(int argc, char** argv)
+void _parseFlags(int argc, char** argv, const enum _ParseOption option)
 {
 	while (argc > 0)
 	{
@@ -263,19 +258,7 @@ void _parseFlags(int argc, char** argv)
 		{
 			struct _Flag* const flag = &_flagsCache.flags[flagIndex];
 
-			unsigned int fullFlagNameLength = 0;
-			char fullFlagName[(STRING_FLAG_CAPACITY + 1) * 2];
-
-			const unsigned int flagPrefixLength = strlen(flag->prefix);
-			memcpy(fullFlagName, flag->prefix, flagPrefixLength);
-
-			const unsigned int flagNameLength = strlen(flag->name);
-			memcpy(fullFlagName + flagPrefixLength, flag->name, flagNameLength);
-
-			fullFlagNameLength = flagPrefixLength + flagNameLength;
-			fullFlagName[fullFlagNameLength] = '\0';
-
-			if (strcmp(fullFlagName, arg) == 0)
+			if (strcmp(flag->name, arg) == 0)
 			{
 				const char* argValue = _shift(&argc, &argv);
 
@@ -297,7 +280,7 @@ void _parseFlags(int argc, char** argv)
 			}
 		}
 
-		if (invalidArgumentEncountered >= _flagsCache.count)
+		if (option == PARSE_STRICT && invalidArgumentEncountered >= _flagsCache.count)
 		{
 			fprintf(stderr, "ERROR: unknown argument `%s` encountered for flags cache!\n", arg);
 			exit(1);

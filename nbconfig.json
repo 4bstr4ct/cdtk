@@ -11,6 +11,10 @@
 				"-std=c11"
 			],
 			"runArgs": [
+				"--boolFlag", "true",
+				"--int64Flag", "420",
+				"--doubleFlag", "-420.5",
+				"--textFlag", "hello"
 			],
 			"dependencies": [
 				"./ctest/source/ctest.c"
