@@ -241,8 +241,6 @@ static int _handleFlag(struct _Flag* const flag, const char* argValue)
 
 void _parseFlags(int argc, char** argv)
 {
-	const char* program = _shift(&argc, &argv);
-
 	while (argc > 0)
 	{
 		const char* arg = _shift(&argc, &argv);

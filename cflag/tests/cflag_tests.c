@@ -32,6 +32,7 @@ int main(int argc, char** argv)
 		"Some text for somtehing"
 	);
 
+	--argc; ++argv;
 	_parseFlags(argc, argv);
 
 	fprintf(stdout, "bool flag = %d\n", *boolFlag);

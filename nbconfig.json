@@ -1,0 +1,29 @@
+[
+	{
+		"name": "cflag",
+		"rootDirectory": "./cflag",
+		"buildDirectory": "./build/cflag",
+		"dependencies": [
+			"./cflag/source/cflag.c",
+			"./ctest/source/ctest.c"
+		],
+		"compiler": "gcc",
+		"buildArgs":
+		[
+			"-std=c11"
+		]
+	},
+	{
+		"name": "ctest",
+		"rootDirectory": "./ctest",
+		"buildDirectory": "./build/ctest",
+		"dependencies": [
+			"./ctest/source/ctest.c"
+		],
+		"compiler": "gcc",
+		"buildArgs":
+		[
+			"-std=c11"
+		]
+	}
+]
