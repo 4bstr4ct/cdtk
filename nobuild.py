@@ -4,62 +4,8 @@ import argparse
 import json
 
 
-def _build_lib_tests(data):
-	build_flags = ''
-	for build_flag in data['buildArgs']:
-		build_flags += ' ' + build_flag
-
-	dependencies = ''
-	for file in data['dependencies']:
-		full_path = os.path.join(os.getcwd(), file)
-		dependencies += ' ' + full_path
-
-	compiler = data['compiler']
-
-	if not os.path.isdir(os.path.join(os.getcwd(), 'build')):
-		os.mkdir(os.path.join(os.getcwd(), 'build'))
-
-	if not os.path.isdir(os.path.join(os.getcwd(), data['buildDirectory'])):
-		os.mkdir(os.path.join(os.getcwd(), data['buildDirectory']))
-
-	for file in os.listdir(os.path.join(os.getcwd(), data['rootDirectory'], 'tests')):
-		full_test_file_path = os.path.join(os.getcwd(), data['rootDirectory'], 'tests', file)
-		full_output_file_path = os.path.join(os.getcwd(), data['buildDirectory'], '{}.{}'.format(file, 'out'))
-		if sys.platform == 'win32':
-			full_output_file_path = '{}.{}'.format(full_output_file_path, 'exe')
-
-		if sys.platform == 'win32':
-			os.system('cmd /C \"{} {} -o {} {} {}\"'.format(
-				compiler,
-				build_flags,
-				full_output_file_path,
-				full_test_file_path,
-				dependencies))
-		else:
-			os.system('{} {} -o {} {} {}'.format(
-				compiler,
-				build_flags,
-				full_output_file_path,
-				full_test_file_path,
-				dependencies))
-
-
-def _run_lib_tests(data):
-	for file in os.listdir(os.path.join(os.getcwd(), data['buildDirectory'])):
-		full_file_path = os.path.join(os.getcwd(), data['buildDirectory'], file)
-		
-		full_output_file_path = os.path.join(os.getcwd(), data['buildDirectory'], file)
-		if sys.platform == 'win32':
-			full_output_file_path = '{}.{}'.format(full_output_file_path, 'exe')
-
-		if sys.platform == 'win32':
-			os.system('cmd /C \"{}\"'.format(full_output_file_path))
-		else:
-			os.system('{}'.format(full_output_file_path))
-
-
 def _clear_builds():
-	build_directory = os.path.join(os.getcwd(), "build")
+	build_directory = os.path.join(os.getcwd(), 'build')
 	if os.path.isdir(build_directory):
 		import shutil
 		shutil.rmtree(build_directory)
@@ -68,6 +14,56 @@ def _clear_builds():
 
 def _clear_terminal():
 	os.system('cls' if os.name == 'nt' else 'clear')
+
+
+def _build_and_run_test(test):
+	test_name = test['name']
+
+	sources = ''
+	for source in test['sources']:
+		sources += ' ' + os.path.join(os.getcwd(), source)
+
+	compiler = test['compiler']
+
+	build_args = ''
+	for build_arg in test['buildArgs']:
+		build_args += ' ' + build_arg
+
+	run_args = ''
+	for run_arg in test['runArgs']:
+		run_args += ' ' + run_arg
+
+	dependencies = ''
+	for dependency in test['dependencies']:
+		dependencies += ' ' + os.path.join(os.getcwd(), dependency)
+
+	build_directory = os.path.join(os.getcwd(), 'build')
+	if not os.path.isdir(build_directory):
+		os.mkdir(build_directory)
+
+	build_tests_directory = os.path.join(build_directory, 'tests')
+	if not os.path.isdir(build_tests_directory):
+		os.mkdir(build_tests_directory)
+
+	output_file_path = os.path.join(build_tests_directory, '{}.out'.format(test_name))
+
+	if sys.platform == 'win32':
+		output_file_path = '{}.exe'.format(output_file_path)
+		os.system('cmd /C \"{} {} -o {} {} {}\"'.format(
+			compiler,
+			build_args,
+			output_file_path,
+			sources,
+			dependencies))
+		os.system('cmd /C \"{}\"'.format(output_file_path))
+	else:
+		os.system('{} {} -o {} {} {}'.format(
+			compiler,
+			build_args,
+			output_file_path,
+			sources,
+			dependencies))
+		os.system('{}'.format(output_file_path))
 
 
 def _main():
@@ -79,28 +75,16 @@ def _main():
 		help='A config file for the builder and runner'
 	)
 
-	subparsers = root_parser.add_subparsers(title='subcommands')
-	subparsers.dest = 'command'
-
-	builder_parser = subparsers.add_parser('build-tests', help='Build project')
-	builder_parser.add_argument(
+	root_parser.add_argument(
 		'--clear-builds',
 		action='store_true',
-		help='Flag to clear all build directory'
-	)
- 
-	runner_parser = subparsers.add_parser('run-tests', help='Run tests')
-	runner_parser.add_argument(
-		'--clear-terminal',
-		action='store_true',
-		help='Flag to clear terminal before running tests'
+		help='Clear all builds'
 	)
 
-	builder_and_runner_parser = subparsers.add_parser('build-and-run-tests', help='Build and run tests')
-	builder_and_runner_parser.add_argument(
-		'--clear-all',
+	root_parser.add_argument(
+		'--clear-terminal',
 		action='store_true',
-		help='Clear build and terminal screen'
+		help='Clear terminal'
 	)
 
 	args = vars(root_parser.parse_args())
@@ -118,37 +102,19 @@ def _main():
 		print('Failed to parse config file!')
 		exit(1)
 
-	if args['command'] == 'build-tests':
-		if args['clear_builds']:
-			_clear_builds()
+	config_tests_content = config_content['tests']
 
-		for lib in config_content:
-			_build_lib_tests(lib)
+	if args['clear_builds']:
+		_clear_builds()
 
-		print('Finished building tests. Quitting...')
-		exit(0)
+	if args['clear_terminal']:
+		_clear_terminal()
 
-	if args['command'] == 'run-tests':
-		if args['clear_terminal']:
-			_clear_terminal()
+	for test in config_tests_content:
+		_build_and_run_test(test)
 
-		for lib in config_content:
-			_run_lib_tests(lib)
-
-		print('Finished running tests. Quitting...')
-		exit(0)
-
-	if args['command'] == 'build-and-run-tests':
-		if args['clear_all']:
-			_clear_builds()
-			_clear_terminal()
-
-		for lib in config_content:
-			_build_lib_tests(lib)
-			_run_lib_tests(lib)
-
-		print('Finished building and running tests. Quitting...')
-		exit(0)
+	print('Finished building tests. Quitting...')
+	exit(0)
 
 
 _main()

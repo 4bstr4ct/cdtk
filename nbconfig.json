@@ -1,29 +1,35 @@
-[
-	{
-		"name": "cflag",
-		"rootDirectory": "./cflag",
-		"buildDirectory": "./build/cflag",
-		"dependencies": [
-			"./cflag/source/cflag.c",
-			"./ctest/source/ctest.c"
-		],
-		"compiler": "gcc",
-		"buildArgs":
-		[
-			"-std=c11"
-		]
-	},
-	{
-		"name": "ctest",
-		"rootDirectory": "./ctest",
-		"buildDirectory": "./build/ctest",
-		"dependencies": [
-			"./ctest/source/ctest.c"
-		],
-		"compiler": "gcc",
-		"buildArgs":
-		[
-			"-std=c11"
-		]
-	}
-]
+{
+	"tests": [
+		{
+			"name": "cflag_test",
+			"sources": [
+				"./cflag/source/cflag.c",
+				"./cflag/tests/cflag_tests.c"
+			],
+			"compiler": "gcc",
+			"buildArgs": [
+				"-std=c11"
+			],
+			"runArgs": [
+			],
+			"dependencies": [
+				"./ctest/source/ctest.c"
+			]
+		},
+		{
+			"name": "ctest_test",
+			"sources": [
+				"./ctest/source/ctest.c",
+				"./ctest/tests/main.c"
+			],
+			"compiler": "gcc",
+			"buildArgs": [
+				"-std=c11"
+			],
+			"runArgs": [
+			],
+			"dependencies": [
+			]
+		}
+	]
+}
