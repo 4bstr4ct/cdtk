@@ -236,6 +236,12 @@ static int _handleFlag(struct _Flag* const flag, const char* argValue)
 
 void _parseFlags(int argc, char** argv, const enum _ParseOption option)
 {
+	if (option == PARSE_STRICT && argc <= 0)
+	{
+		fprintf(stderr, "ERROR: no arguments were provided!\n");
+		exit(1);
+	}
+
 	while (argc > 0)
 	{
 		const char* arg = _shift(&argc, &argv);
