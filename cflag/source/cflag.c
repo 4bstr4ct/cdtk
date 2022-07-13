@@ -28,6 +28,7 @@ union _FlagValue
 struct _Flag
 {
 	const char* name;
+	const char* usage;
 	enum _FlagType type;
 	union _FlagValue value;
 	const char* description;
@@ -64,62 +65,73 @@ static const char* const _stringifiedFlagTypes[] =
 	[FLAG_STRING]	= "string"
 };
 
-static const char* _formatHelp()
+static const char* _formatHelp(const char* const usage)
 {
 	_helpBuffer.length = 0;
+	_helpBuffer.length += snprintf(
+			_helpBuffer.buffer + _helpBuffer.length, HELP_BUFFER_CAPACITY,
+			"Usage: %s\nOptions:\n", usage);
 
 	for (unsigned int index = 0; index < _flagsCache.count; ++index)
 	{
-		struct _Flag* const flag = &_flagsCache.flags[index];
+		const struct _Flag* const flag = &_flagsCache.flags[index];
 		unsigned int written = snprintf(
 			_helpBuffer.buffer + _helpBuffer.length,
 			HELP_BUFFER_CAPACITY,
-			"    %s\n        [ %s ] - %s.\n",
+			"    %s\n        Usage: %s\n        [ %s ] - %s\n\n",
 			flag->name,
+			flag->usage,
 			_stringifiedFlagTypes[flag->type],
 			flag->description);
 		_helpBuffer.length += written;
 	}
 
 	_helpBuffer.buffer[_helpBuffer.length] = '\0';
+	return _helpBuffer.buffer;
 }
 
-static struct _Flag* const _metaFlag(const char* name, const char* description)
+static void _printUsage(FILE* const stream)
+{
+	fprintf(stream, "%s", _helpBuffer.buffer);
+}
+
+static struct _Flag* const _metaFlag(const char* name, const char* usage, const char* description)
 {
 	assert(_flagsCache.count < FLAGS_CACHE_CAPACITY);
 	struct _Flag* const flag = &_flagsCache.flags[_flagsCache.count++];
 	flag->name = name;
+	flag->usage = usage;
 	flag->description = description;
 	return flag;
 }
 
-bool* _boolFlag(const char* name, const bool defaultValue, const char* description)
+bool* _boolFlag(const char* name, const char* usage, const bool defaultValue, const char* description)
 {
-	struct _Flag* const flag = _metaFlag(name, description);
+	struct _Flag* const flag = _metaFlag(name, usage, description);
 	flag->type = FLAG_BOOL;
 	flag->value.b = defaultValue;
 	return &flag->value.b;
 }
 
-int64* _int64Flag(const char* name, const int64 defaultValue, const char* description)
+int64* _int64Flag(const char* name, const char* usage, const int64 defaultValue, const char* description)
 {
-	struct _Flag* const flag = _metaFlag(name, description);
+	struct _Flag* const flag = _metaFlag(name, usage, description);
 	flag->type = FLAG_INT64;
 	flag->value.i64 = defaultValue;
 	return &flag->value.i64;
 }
 
-double* _doubleFlag(const char* name, const double defaultValue, const char* description)
+double* _doubleFlag(const char* name, const char* usage, const double defaultValue, const char* description)
 {
-	struct _Flag* const flag = _metaFlag(name, description);
+	struct _Flag* const flag = _metaFlag(name, usage, description);
 	flag->type = FLAG_DOUBLE;
 	flag->value.d = defaultValue;
 	return &flag->value.d;
 }
 
-const char* _stringFlag(const char* name, const char* const defaultValue, const char* description)
+const char* _stringFlag(const char* name, const char* usage, const char* const defaultValue, const char* description)
 {
-	struct _Flag* const flag = _metaFlag(name, description);
+	struct _Flag* const flag = _metaFlag(name, usage, description);
 	flag->type = FLAG_STRING;
 	unsigned int length = strlen(defaultValue);
 	length = length >= STRING_FLAG_CAPACITY ? STRING_FLAG_CAPACITY : length;
@@ -234,11 +246,14 @@ static int _handleFlag(struct _Flag* const flag, const char* argValue)
 	return 0;
 }
 
-void _parseFlags(int argc, char** argv, const enum _ParseOption option)
+void _parseFlags(int argc, char** argv, const enum _ParseOption option, const char* const usage)
 {
+	_formatHelp(usage);
+
 	if (option == PARSE_STRICT && argc <= 0)
 	{
 		fprintf(stderr, "ERROR: no arguments were provided!\n");
+		_printUsage(stderr);
 		exit(1);
 	}
 
@@ -249,12 +264,13 @@ void _parseFlags(int argc, char** argv, const enum _ParseOption option)
 		if (arg == ((void*)0))
 		{
 			fprintf(stderr, "ERROR: unreachable argument!\n");
+			_printUsage(stderr);
 			exit(1);
 		}
 
 		if (strcmp(arg, "--help") == 0)
 		{
-			fprintf(stdout, _formatHelp());
+			_printUsage(stdout);
 			exit(0);
 		}
 
@@ -271,6 +287,7 @@ void _parseFlags(int argc, char** argv, const enum _ParseOption option)
 				if (argValue == ((void*)0))
 				{
 					fprintf(stderr, "ERROR: value was not found for flag %s!\n", flag->name);
+					_printUsage(stderr);
 					exit(1);
 				}
 
@@ -289,6 +306,7 @@ void _parseFlags(int argc, char** argv, const enum _ParseOption option)
 		if (option == PARSE_STRICT && invalidArgumentEncountered >= _flagsCache.count)
 		{
 			fprintf(stderr, "ERROR: unknown argument `%s` encountered for flags cache!\n", arg);
+			_printUsage(stderr);
 			exit(1);
 		}
 	}
