@@ -144,7 +144,7 @@ static const char* _shift(int* argc, char*** argv)
 {
 	const char* current = ((void*)0);
 
-	if (argc > 0)
+	if (*argc > 0)
 	{
 		current = **argv;
 		*argc -= 1;
