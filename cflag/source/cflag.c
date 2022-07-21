@@ -14,7 +14,7 @@ enum _FlagType
 };
 
 #ifndef STRING_FLAG_CAPACITY
-#	define STRING_FLAG_CAPACITY 128
+#	define STRING_FLAG_CAPACITY 256
 #endif
 
 union _FlagValue
@@ -35,7 +35,7 @@ struct _Flag
 };
 
 #ifndef FLAGS_CACHE_CAPACITY
-#	define FLAGS_CACHE_CAPACITY 128
+#	define FLAGS_CACHE_CAPACITY 256
 #endif
 
 struct _FlagsCache
@@ -45,12 +45,12 @@ struct _FlagsCache
 };
 
 #ifndef HELP_BUFFER_CAPACITY
-#	define HELP_BUFFER_CAPACITY 1024
+#	define HELP_BUFFER_CAPACITY 2048
 #endif
 
 struct _HelpBuffer
 {
-	char buffer[1024];
+	char buffer[HELP_BUFFER_CAPACITY + 1];
 	unsigned int length;
 };
 

@@ -1,10 +1,7 @@
 #ifndef _CFLAG_H_
 #define _CFLAG_H_
 
-/**
- * A typedef for boolean.
- */
-typedef enum { false, true } bool;
+#include <stdbool.h>
 
 /**
  * A typedef for signed long long.
