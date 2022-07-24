@@ -79,6 +79,8 @@ void _destroyParserContext(
 			} break;
 		}
 	}
+
+	free(context);
 }
 
 struct _HelpBuffer
