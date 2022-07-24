@@ -34,27 +34,63 @@ struct _Flag
 	const char* description;
 };
 
-#ifndef FLAGS_CACHE_CAPACITY
-#	define FLAGS_CACHE_CAPACITY 256
-#endif
-
-struct _FlagsCache
+struct _ParserContext
 {
-	struct _Flag flags[FLAGS_CACHE_CAPACITY];
+	struct _Flag* flags;
 	unsigned int count;
+	unsigned int maxCount;
 };
 
+struct _ParserContext* _createParserContext(
+	const unsigned int maxFlagsCount)
+{
+	struct _ParserContext* context = (struct _ParserContext*)malloc(sizeof(struct _ParserContext));
+	assert(context != NULL);
+
+	context->flags = (struct _Flag*)malloc((maxFlagsCount) * sizeof(struct _Flag));
+	assert(context->flags != NULL);
+
+	context->count = 0;
+	context->maxCount = maxFlagsCount;
+
+	return context;
+}
+
+void _destroyParserContext(
+	struct _ParserContext* const context)
+{
+	assert(context != NULL);
+	assert(context->flags != NULL);
+
+	for (unsigned int index = 0; index < context->maxCount; ++index)
+	{
+		struct _Flag* const flag = &context->flags[index];
+		assert(flag != NULL);
+
+		switch (flag->type)
+		{
+			case FLAG_STRING:
+			{
+				free(flag->value.s);
+			} break;
+
+			default:
+			{
+			} break;
+		}
+	}
+}
+
+struct _HelpBuffer
+{
 #ifndef HELP_BUFFER_CAPACITY
 #	define HELP_BUFFER_CAPACITY 2048
 #endif
 
-struct _HelpBuffer
-{
 	char buffer[HELP_BUFFER_CAPACITY + 1];
 	unsigned int length;
 };
 
-static struct _FlagsCache _flagsCache = { .count = 0 };
 static struct _HelpBuffer _helpBuffer = { .length = 0 };
 
 static const char* const _stringifiedFlagTypes[] =
@@ -65,16 +101,20 @@ static const char* const _stringifiedFlagTypes[] =
 	[FLAG_STRING]	= "string"
 };
 
-static const char* _formatHelp(const char* const usage)
+static const char* _formatHelp(
+	struct _ParserContext* const context,
+	const char* const usage)
 {
+	assert(context != NULL);
+	assert(context->flags != NULL);
 	_helpBuffer.length = 0;
 	_helpBuffer.length += snprintf(
 			_helpBuffer.buffer + _helpBuffer.length, HELP_BUFFER_CAPACITY,
 			"Usage: %s\nOptions:\n", usage);
 
-	for (unsigned int index = 0; index < _flagsCache.count; ++index)
+	for (unsigned int index = 0; index < context->count; ++index)
 	{
-		const struct _Flag* const flag = &_flagsCache.flags[index];
+		const struct _Flag* const flag = &context->flags[index];
 		unsigned int written = snprintf(
 			_helpBuffer.buffer + _helpBuffer.length,
 			HELP_BUFFER_CAPACITY,
@@ -95,54 +135,89 @@ static void _printUsage(FILE* const stream)
 	fprintf(stream, "%s", _helpBuffer.buffer);
 }
 
-static struct _Flag* const _metaFlag(const char* name, const char* usage, const char* description)
+static struct _Flag* const _metaFlag(
+	struct _ParserContext* const context,
+	const char* name,
+	const char* usage,
+	const char* description)
 {
-	assert(_flagsCache.count < FLAGS_CACHE_CAPACITY);
-	struct _Flag* const flag = &_flagsCache.flags[_flagsCache.count++];
+	assert(context != NULL);
+	assert(context->flags != NULL);
+	assert(context->count < context->maxCount);
+	struct _Flag* const flag = &context->flags[context->count++];
+	assert(flag != NULL);
 	flag->name = name;
 	flag->usage = usage;
 	flag->description = description;
 	return flag;
 }
 
-bool* _boolFlag(const char* name, const char* usage, const bool defaultValue, const char* description)
+bool* _boolFlag(
+	struct _ParserContext* const context,
+	const char* name,
+	const char* usage,
+	const char* description)
 {
-	struct _Flag* const flag = _metaFlag(name, usage, description);
+	assert(context != NULL);
+	assert(context->flags != NULL);
+	struct _Flag* const flag = _metaFlag(context, name, usage, description);
+	assert(flag != NULL);
 	flag->type = FLAG_BOOL;
-	flag->value.b = defaultValue;
+	flag->value.b = false;
 	return &flag->value.b;
 }
 
-int64* _int64Flag(const char* name, const char* usage, const int64 defaultValue, const char* description)
+int64* _int64Flag(
+	struct _ParserContext* const context,
+	const char* name,
+	const char* usage,
+	const char* description)
 {
-	struct _Flag* const flag = _metaFlag(name, usage, description);
+	assert(context != NULL);
+	assert(context->flags != NULL);
+	struct _Flag* const flag = _metaFlag(context, name, usage, description);
+	assert(flag != NULL);
 	flag->type = FLAG_INT64;
-	flag->value.i64 = defaultValue;
+	flag->value.i64 = 0;
 	return &flag->value.i64;
 }
 
-double* _doubleFlag(const char* name, const char* usage, const double defaultValue, const char* description)
+double* _doubleFlag(
+	struct _ParserContext* const context,
+	const char* name,
+	const char* usage,
+	const char* description)
 {
-	struct _Flag* const flag = _metaFlag(name, usage, description);
+	assert(context != NULL);
+	assert(context->flags != NULL);
+	struct _Flag* const flag = _metaFlag(context, name, usage, description);
+	assert(flag != NULL);
 	flag->type = FLAG_DOUBLE;
-	flag->value.d = defaultValue;
+	flag->value.d = 0.0;
 	return &flag->value.d;
 }
 
-const char* _stringFlag(const char* name, const char* usage, const char* const defaultValue, const char* description)
+const char* _stringFlag(
+	struct _ParserContext* const context,
+	const char* name,
+	const char* usage,
+	const char* description)
 {
-	struct _Flag* const flag = _metaFlag(name, usage, description);
+	assert(context != NULL);
+	assert(context->flags != NULL);
+	struct _Flag* const flag = _metaFlag(context, name, usage, description);
+	assert(flag != NULL);
 	flag->type = FLAG_STRING;
-	unsigned int length = strlen(defaultValue);
-	length = length >= STRING_FLAG_CAPACITY ? STRING_FLAG_CAPACITY : length;
-	memcpy(flag->value.s, defaultValue, length);
-	flag->value.s[length] = '\0';
+	memcpy(flag->value.s, "", 0);
+	flag->value.s[0] = '\0';
 	return (const char*)(flag->value.s);
 }
 
-static const char* _shift(int* argc, char*** argv)
+static const char* _shift(
+	int* argc,
+	char*** argv)
 {
-	const char* current = ((void*)0);
+	const char* current = NULL;
 
 	if (*argc > 0)
 	{
@@ -154,7 +229,9 @@ static const char* _shift(int* argc, char*** argv)
 	return current;
 }
 
-static int _handleFlag(struct _Flag* const flag, const char* argValue)
+static int _handleFlag(
+	struct _Flag* const flag,
+	const char* argValue)
 {
 	switch (flag->type)
 	{
@@ -221,7 +298,7 @@ static int _handleFlag(struct _Flag* const flag, const char* argValue)
 
 		case FLAG_STRING:
 		{
-			if (argValue != ((void*)0))
+			if (argValue != NULL)
 			{
 				unsigned int length = strlen(argValue);
 				length = length >= STRING_FLAG_CAPACITY ? STRING_FLAG_CAPACITY : length;
@@ -246,11 +323,15 @@ static int _handleFlag(struct _Flag* const flag, const char* argValue)
 	return 0;
 }
 
-void _parseFlags(int argc, char** argv, const enum _ParseOption option, const char* const usage)
+void _parseFlags(
+	struct _ParserContext* const context,
+	int argc,
+	char** argv,
+	const char* const usage)
 {
-	_formatHelp(usage);
+	_formatHelp(context, usage);
 
-	if (option == PARSE_STRICT && argc <= 0)
+	if (argc <= 0)
 	{
 		fprintf(stderr, "ERROR: no arguments were provided!\n");
 		_printUsage(stderr);
@@ -261,7 +342,7 @@ void _parseFlags(int argc, char** argv, const enum _ParseOption option, const ch
 	{
 		const char* arg = _shift(&argc, &argv);
 
-		if (arg == ((void*)0))
+		if (arg == NULL)
 		{
 			fprintf(stderr, "ERROR: unreachable argument!\n");
 			_printUsage(stderr);
@@ -276,15 +357,15 @@ void _parseFlags(int argc, char** argv, const enum _ParseOption option, const ch
 
 		int invalidArgumentEncountered = 0;
 
-		for (unsigned int flagIndex = 0; flagIndex < _flagsCache.count; ++flagIndex)
+		for (unsigned int flagIndex = 0; flagIndex < context->count; ++flagIndex)
 		{
-			struct _Flag* const flag = &_flagsCache.flags[flagIndex];
+			struct _Flag* const flag = &context->flags[flagIndex];
 
 			if (strcmp(flag->name, arg) == 0)
 			{
 				const char* argValue = _shift(&argc, &argv);
 
-				if (argValue == ((void*)0))
+				if (argValue == NULL)
 				{
 					fprintf(stderr, "ERROR: value was not found for flag %s!\n", flag->name);
 					_printUsage(stderr);
@@ -303,7 +384,7 @@ void _parseFlags(int argc, char** argv, const enum _ParseOption option, const ch
 			}
 		}
 
-		if (option == PARSE_STRICT && invalidArgumentEncountered >= _flagsCache.count)
+		if (invalidArgumentEncountered >= context->count)
 		{
 			fprintf(stderr, "ERROR: unknown argument `%s` encountered for flags cache!\n", arg);
 			_printUsage(stderr);
